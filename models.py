@@ -2,7 +2,8 @@ import tensorflow as tf
 from tensorflow.contrib import layers
 
 def T(x):
-    
+
+    # need to have shared variables here!
     # only one hidden layer
     hidden = layers.relu(x, 10)
     
