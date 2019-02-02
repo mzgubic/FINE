@@ -20,7 +20,7 @@ def FINE(x_theta, x_theta_prime, delta_theta, name='FINE'):
     T_theta_prime = T(x_theta_prime, name)
     
     # compute the loss
-    FI = tf.reduce_mean(T_theta) - tf.math.log(tf.reduce_mean(tf.math.exp(T_theta_prime)))
+    FI = 2 * (tf.reduce_mean(T_theta) - tf.math.log(tf.reduce_mean(tf.math.exp(T_theta_prime))))
     FI /= (delta_theta**2)
     loss = -FI # FI = supremum
     
