@@ -16,7 +16,7 @@ class Plotter:
         fig.savefig(outfile)
 
     @staticmethod
-    def heatmap(x, y, z, outfile, xlabel = "", ylabel = "", density = 100):
+    def heatmap(x, y, z, outfile, xlabel = "", ylabel = "", density = 1000):
         x = x.flatten()
         y = y.flatten()
         z = z.flatten()
