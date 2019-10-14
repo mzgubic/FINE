@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
 import math as m
+import numpy as np
 
 class FlowModel:
 
@@ -49,6 +50,24 @@ class FlowModel:
             
         return tf.squeeze(logcdf)
 
+    def build_fisher(self, x, theta, trafos):
+        """
+        Add the TF graph objects which, given a fitted normalising flow, compute
+        the Fisher information (density).
+        x ... a vector of random numbers distributed according to the innermost distribution
+              of the normalising flow, i.e. a standard normal distribution. These will be used
+              to perform the actual Monte Carlo integration.
+        """
+        with tf.variable_scope("fisher"):
+            self.xk = x
+            self.fisher_densities = []
+            for cur_trafo in trafos: # this time, need to iterate in the forward direction
+                self.fisher_densities.append(tf.math.reduce_mean(tf.hessians(cur_trafo.forward(self.xk), theta)))
+                #self.fisher_densities.append(tf.hessians(cur_trafo.forward(self.xk), theta))
+                self.xk = cur_trafo.forward(self.xk) # propagate them to the next transformation in the flow
+
+            return tf.add_n(self.fisher_densities) # add up all contributions to give the full Fisher information
+    
     def init(self):
         with self.graph.as_default():
             self.sess.run(tf.global_variables_initializer())
@@ -57,6 +76,7 @@ class FlowModel:
         with self.graph.as_default():
             self.x_in = tf.placeholder(tf.float32, [None, 1], name = 'x_in')
             self.theta_in = tf.placeholder(tf.float32, [None, 1], name = 'theta_in')
+            self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
             self.flow_params = self.build_param_network(intensor = self.theta_in, num_layers = 2, num_units = self.number_warps * 2, num_params = self.number_warps * 2)
@@ -71,10 +91,15 @@ class FlowModel:
                 self.trafos.append(self.flow_model(alpha = cur_alpha, beta = cur_beta, name = "flow_trafo_{}".format(cur)))
 
             self.logcdf = self.build_logcdf(self.x_in, self.theta_in, trafos = self.trafos)
-            self.loss = -tf.math.reduce_sum(self.logcdf, axis = 0) # sum along the batch dimension
 
+            # add the loss for the training of the conditional density estimator
+            self.loss = -tf.math.reduce_sum(self.logcdf, axis = 0) # sum along the batch dimension
+            
             # add optimiser
             self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001).minimize(self.loss)
+
+            # add some more operations that compute the Fisher information
+            self.fisher = self.build_fisher(self.rnd_in, self.theta_in, self.trafos)
             
     def evaluate(self, x, theta):
         """
@@ -84,13 +109,27 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
 
-    def evaluate_Fisher(self, theta):
+    def evaluate_fisher(self, theta, num_samples = 1000):
         """
         Compute the Fisher information w.r.t. theta.
         """
-        
-        pass
+        # generate some random numbers for the MC integration
+        rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
+        with self.graph.as_default():
+            fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta})
 
+        return fisher
+
+    def evaluate_fisher_with_debug(self, theta, num_samples = 5):
+        rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
+
+        with self.graph.as_default():
+            dens = self.sess.run(self.fisher_densities[0], feed_dict = {self.rnd_in: rnd, self.theta_in: theta})
+            xk = self.sess.run(self.xk, feed_dict = {self.rnd_in: rnd, self.theta_in: theta})
+
+        print("dens = {}".format(dens))
+        print("xk = {}".format(xk))
+    
     def fit(self, x, theta, number_steps = 10):
         for cur_step in range(number_steps):
             with self.graph.as_default():
