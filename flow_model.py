@@ -34,6 +34,8 @@ class FlowModel:
         Some internal random variable z is related to x through 'number_warps' applications
         of the normalising flow transformation.
         """
+        eps = 1e-6
+        
         # compute the inverse of the overall flow transformation and also pick up the
         # Jacobian terms on the way
         with tf.variable_scope("flow"):
@@ -41,9 +43,9 @@ class FlowModel:
             jacs = []
             for cur_trafo in reversed(trafos):
                 x0 = cur_trafo.backward(x0)
-                jacs.append(tf.log(cur_trafo.forward_derivative(x0)))
+                jacs.append(tf.log(cur_trafo.forward_derivative(x0) + eps))
                 
-            logcdf = tf.math.log(self.std_normal(x0)) - tf.add_n(jacs)
+            logcdf = tf.math.log(self.std_normal(x0) + eps) - tf.add_n(jacs)
             
         return tf.squeeze(logcdf)
 
@@ -81,6 +83,13 @@ class FlowModel:
         with self.graph.as_default():
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
+
+    def evaluate_Fisher(self, theta):
+        """
+        Compute the Fisher information w.r.t. theta.
+        """
+        
+        pass
 
     def fit(self, x, theta, number_steps = 10):
         for cur_step in range(number_steps):
