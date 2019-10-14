@@ -17,7 +17,7 @@ def evaluate_CDE(theta, x):
     """
     Evaluate the conditional density p(x|theta)
     """
-    return 1.0 / np.sqrt(2 * np.pi * np.square(theta)) * np.exp(-0.5 * np.square((x / theta)))
+    return np.log(1.0 / np.sqrt(2 * np.pi * np.square(theta)) * np.exp(-0.5 * np.square((x / theta))))
 
 def generate_data(nsamples):
     """
