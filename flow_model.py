@@ -118,7 +118,7 @@ class FlowModel:
         with self.graph.as_default():
             #fisher = self.sess.run(self.debug_hessian, feed_dict = {self.x_in: rnd, self.rnd_in: rnd, self.theta_in: theta})
             #print(fisher)
-            fisher = self.sess.run(self.fisher / num_samples, feed_dict = {self.x_in: rnd, self.rnd_in: rnd, self.theta_in: theta})
+            fisher = self.sess.run(self.fisher / num_samples, feed_dict = {self.rnd_in: rnd, self.theta_in: theta})
 
         return fisher
 

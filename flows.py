@@ -6,7 +6,7 @@ class RadialFlow:
     def __init__(self, alpha, beta, name = "flow_trafo"):
         with tf.variable_scope(name, reuse = tf.AUTO_REUSE):
             self.name = name
-            self.alpha = alpha
+            self.alpha = alpha#tf.math.exp(alpha) - 0.99999
             self.beta = beta
 
     def forward(self, z):
