@@ -32,7 +32,7 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 200
+    nsamples = 300
     data, theta = generate_data(nsamples)
 
     # create a simple scatter plot to visualise this datset
@@ -70,7 +70,6 @@ def run():
     for cur_theta in theta:
         fisher.append(mod.evaluate_fisher(theta = [[cur_theta]]))
 
-    print(fisher)
     Plotter.scatter_plot(theta, fisher, outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
     
 if __name__ == "__main__":
