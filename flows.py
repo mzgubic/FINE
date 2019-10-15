@@ -19,7 +19,7 @@ class RadialFlow:
 
     def forward_derivative(self, z):
         with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
-            return 1.0 + self.alpha
+            return tf.ones_like(z) * (1.0 + self.alpha)
 
     def backward_derivative(self, z):
         with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):

@@ -32,14 +32,14 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 100
+    nsamples = 200
     data, theta = generate_data(nsamples)
 
     # create a simple scatter plot to visualise this datset
     Plotter.scatter_plot(x = theta, y = data, outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 3, flow_model = RadialFlow)
+    mod = FlowModel(number_warps = 5, flow_model = RadialFlow)
     mod.build()
     mod.init()
     mod.fit(x = data, theta = theta, number_steps = 1000)
@@ -57,8 +57,14 @@ def run():
     vals_truth = evaluate_CDE(x = eval_x, theta = eval_theta)
     Plotter.heatmap(x = eval_theta, y = eval_x, z = vals, outfile = "model.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
     Plotter.heatmap(x = eval_theta, y = eval_x, z = vals_truth, outfile = "truth.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
+
+    # make some cross sectional plots through the CDE landscape
+    theta = np.expand_dims(np.linspace(2.0, 4.0, 100), axis = 1)
+    x = np.zeros_like(theta)
+    crosssection = mod.evaluate(x = x, theta = theta)
+    Plotter.scatter_plot(theta, crosssection, outfile = "x_0.pdf", xlabel = r'$\theta$', ylabel = '$p(x = 0|\theta)$')
     
-    # try to evaluate the Fisher information
+    # evaluate the Fisher information
     theta = np.linspace(2.0, 4.0, 100)
     fisher = []
     for cur_theta in theta:

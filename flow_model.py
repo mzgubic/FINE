@@ -62,7 +62,8 @@ class FlowModel:
         self.xk = x
         self.fisher_densities = []
         for cur_trafo in trafos: # this time, need to iterate in the forward direction
-            self.fisher_densities.append(-tf.math.reduce_mean(tf.hessians(tf.log(cur_trafo.forward_derivative(self.xk) + eps), theta)))
+            #self.debug_hessian = tf.log(cur_trafo.forward_derivative(self.xk) + eps)
+            self.fisher_densities.append(-tf.hessians(tf.log(cur_trafo.forward_derivative(self.xk) + eps), theta)[0])
             self.xk = cur_trafo.forward(self.xk) # propagate them to the next transformation in the flow
 
         return tf.add_n(self.fisher_densities) # add up all contributions to give the full Fisher information
@@ -108,14 +109,16 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
 
-    def evaluate_fisher(self, theta, num_samples = 10000):
+    def evaluate_fisher(self, theta, num_samples = 1000):
         """
         Compute the Fisher information w.r.t. theta.
         """
         # generate some random numbers for the MC integration
         rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
         with self.graph.as_default():
-            fisher = self.sess.run(self.fisher, feed_dict = {self.x_in: rnd, self.rnd_in: rnd, self.theta_in: theta})
+            #fisher = self.sess.run(self.debug_hessian, feed_dict = {self.x_in: rnd, self.rnd_in: rnd, self.theta_in: theta})
+            #print(fisher)
+            fisher = self.sess.run(self.fisher / num_samples, feed_dict = {self.x_in: rnd, self.rnd_in: rnd, self.theta_in: theta})
 
         return fisher
 
