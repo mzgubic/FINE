@@ -39,14 +39,13 @@ class FlowModel:
         
         # compute the inverse of the overall flow transformation and also pick up the
         # Jacobian terms on the way
-        with tf.variable_scope("flow"):
-            x0 = x
-            jacs = []
-            for cur_trafo in reversed(trafos):
-                x0 = cur_trafo.backward(x0)
-                jacs.append(tf.log(cur_trafo.forward_derivative(x0) + eps))
+        x0 = x
+        jacs = []
+        for cur_trafo in reversed(trafos):
+            x0 = cur_trafo.backward(x0)
+            jacs.append(tf.log(cur_trafo.forward_derivative(x0) + eps))
                 
-            logcdf = tf.math.log(self.std_normal(x0) + eps) - tf.add_n(jacs)
+        logcdf = tf.math.log(self.std_normal(x0) + eps) - tf.add_n(jacs)
             
         return tf.squeeze(logcdf)
 
@@ -58,15 +57,15 @@ class FlowModel:
               of the normalising flow, i.e. a standard normal distribution. These will be used
               to perform the actual Monte Carlo integration.
         """
-        with tf.variable_scope("fisher"):
-            self.xk = x
-            self.fisher_densities = []
-            for cur_trafo in trafos: # this time, need to iterate in the forward direction
-                self.fisher_densities.append(tf.math.reduce_mean(tf.hessians(cur_trafo.forward(self.xk), theta)))
-                #self.fisher_densities.append(tf.hessians(cur_trafo.forward(self.xk), theta))
-                self.xk = cur_trafo.forward(self.xk) # propagate them to the next transformation in the flow
+        eps = 1e-6
+        
+        self.xk = x
+        self.fisher_densities = []
+        for cur_trafo in trafos: # this time, need to iterate in the forward direction
+            self.fisher_densities.append(-tf.math.reduce_mean(tf.hessians(tf.log(cur_trafo.forward_derivative(self.xk) + eps), theta)))
+            self.xk = cur_trafo.forward(self.xk) # propagate them to the next transformation in the flow
 
-            return tf.add_n(self.fisher_densities) # add up all contributions to give the full Fisher information
+        return tf.add_n(self.fisher_densities) # add up all contributions to give the full Fisher information
     
     def init(self):
         with self.graph.as_default():
@@ -109,14 +108,14 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
 
-    def evaluate_fisher(self, theta, num_samples = 1000):
+    def evaluate_fisher(self, theta, num_samples = 10000):
         """
         Compute the Fisher information w.r.t. theta.
         """
         # generate some random numbers for the MC integration
         rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
         with self.graph.as_default():
-            fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta})
+            fisher = self.sess.run(self.fisher, feed_dict = {self.x_in: rnd, self.rnd_in: rnd, self.theta_in: theta})
 
         return fisher
 

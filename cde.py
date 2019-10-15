@@ -57,7 +57,7 @@ def run():
     vals_truth = evaluate_CDE(x = eval_x, theta = eval_theta)
     Plotter.heatmap(x = eval_theta, y = eval_x, z = vals, outfile = "model.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
     Plotter.heatmap(x = eval_theta, y = eval_x, z = vals_truth, outfile = "truth.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
-
+    
     # try to evaluate the Fisher information
     theta = np.linspace(2.0, 4.0, 100)
     fisher = []

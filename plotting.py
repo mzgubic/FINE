@@ -26,7 +26,7 @@ class Plotter:
         xi = np.linspace(np.min(x), np.max(x), density)
         yi = np.linspace(np.min(y), np.max(y), density)
         zi = griddata(x, y, z, xi, yi, interp = 'linear')
-        cont = ax.contourf(xi, yi, zi, 15, vmax = np.max(zi), vmin = np.min(zi))
+        cont = ax.contourf(xi, yi, zi, 55, vmax = np.max(zi), vmin = np.min(zi))
         fig.colorbar(cont)
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
