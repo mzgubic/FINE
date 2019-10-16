@@ -4,7 +4,7 @@ import numpy as np
 
 from plotting import Plotter
 from flow_model import FlowModel
-from flows import RadialFlow
+from flows import RadialFlow, TombsFlow
 
 def sample_CDE(theta):
     """
@@ -40,10 +40,10 @@ def run():
     Plotter.scatter_plot(x = theta, y = data, outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 8, flow_model = RadialFlow)
+    mod = FlowModel(number_warps = 2, flow_model = TombsFlow)
     mod.build()
     mod.init()
-    mod.fit(x = data, theta = theta, number_steps = 10)
+    mod.fit(x = data, theta = theta, number_steps = 5000)
 
     # now evaluate the fitted density model and create a heatmap
     density = 10

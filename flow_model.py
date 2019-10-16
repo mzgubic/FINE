@@ -79,11 +79,11 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in, num_layers = 2, num_units = self.number_warps * 2, num_params = self.number_warps * 2)
+            self.flow_params = self.build_param_network(intensor = self.theta_in, num_layers = 2, num_units = self.number_warps * 2, num_params = self.number_warps * 3)
             
             # initialise the flow transformations
-            self.alphas = self.flow_params[:,:self.number_warps]
-            self.betas = self.flow_params[:,self.number_warps:]
+            self.alphas = self.flow_params[:, :self.number_warps]
+            self.betas = self.flow_params[:, self.number_warps:]
             
             for cur in range(self.number_warps):
                 cur_alpha = tf.expand_dims(self.alphas[:,cur], axis = 1)
@@ -143,14 +143,12 @@ class FlowModel:
     def evaluate_with_debug(self, x, theta):
         with self.graph.as_default():
             debug_flow_params = self.sess.run(self.flow_params, feed_dict = {self.x_in: x, self.theta_in: theta})
-            debug_alphas = self.sess.run(self.alphas[:,3], feed_dict = {self.x_in: x, self.theta_in: theta})
-            debug_betas = self.sess.run(self.betas[:,3], feed_dict = {self.x_in: x, self.theta_in: theta})
-            debug_flowout = self.sess.run(self.trafos[1].backward(self.x_in), feed_dict = {self.x_in: x, self.theta_in: theta})
+            debug_alphas = self.sess.run(self.alphas[:,0], feed_dict = {self.x_in: x, self.theta_in: theta})
+            debug_betas = self.sess.run(self.betas[:,0], feed_dict = {self.x_in: x, self.theta_in: theta})
             debug_x = self.sess.run(self.x_in, feed_dict = {self.x_in: x, self.theta_in: theta})
         print("flow_params = {}".format(debug_flow_params))
         print("alphas = {}".format(debug_alphas))
         print("betas = {}".format(debug_betas))
-        print("flowout = {}".format(debug_flowout))
         print("x_int = {}".format(debug_x))
         
 
