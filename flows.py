@@ -74,9 +74,10 @@ class RadialFlow:
 
 class TombsFlow:
 
-    def __init__(self, alpha, beta, name = "flow_trafo"):
+    def __init__(self, alpha, beta, gamma, name = "flow_trafo"):
         with tf.variable_scope(name, reuse = tf.AUTO_REUSE):
             self.name = name
+            self.gamma = gamma
             self.alpha = tf.math.softplus(alpha) + 1e-6
             self.beta = tf.math.softplus(beta) + 1e-6
 

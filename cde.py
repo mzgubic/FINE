@@ -32,7 +32,7 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 1000
+    nsamples = 300
     theta_low = 2
     theta_high = 6
     data, theta = generate_data(nsamples, theta_low, theta_high)
@@ -41,19 +41,14 @@ def run():
     Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 3, flow_model = LinearRadialFlow)
+    mod = FlowModel(number_warps = 5, flow_model = TombsFlow)
     mod.build()
     mod.init()
 
-    # mod.evaluate_with_debug(x = data, theta = theta)
-    
     #mod.fit(x = data, theta = theta, number_steps = 10000)
     
-    #mod.evaluate_gradients_with_debug(x = data, theta = theta)
-    #mod.evaluate_with_debug(x = data, theta = theta)
-    
     # now evaluate the fitted density model and create a heatmap
-    density = 10
+    density = 50
     x_range = np.linspace(-4, 4, density)
     theta_range = np.linspace(theta_low, theta_high, density)
     evalpts = np.array(np.meshgrid(x_range, theta_range)).T.reshape(-1, 2)
@@ -75,14 +70,26 @@ def run():
     Plotter.scatter_plot(xs = [theta, theta], ys = [crosssection, crosssection_truth], labels = [r'$p(x = 0|\theta)$', 'truth'], outfile = "x_0.pdf", xlabel = r'$\theta$')
     
     # evaluate the Fisher information
-    theta = np.linspace(theta_low, theta_high, 100)
-    fisher = []
+    theta = np.linspace(theta_low, theta_high, 20)
+    fisher_np = []
+    fisher_tf = []
     fisher_analytic = []
     for cur_theta in theta:
-        fisher.append(mod.evaluate_fisher(theta = [[cur_theta]]))
+        #fisher_np.append(mod.evaluate_fisher_alternative_np(theta = [[cur_theta]]))
+        fisher_tf.append(mod.evaluate_fisher_alternative(theta = [[cur_theta]]))
         fisher_analytic.append(2.0 / cur_theta**2)
 
-    Plotter.scatter_plot(xs = [theta, theta], ys = [fisher, fisher_analytic], labels = ["FINE", "analytic"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
+    fisher_np = fisher_tf
+    print(fisher_tf)
+        
+    #Plotter.scatter_plot(xs = [theta, theta], ys = [fisher, fisher_analytic], labels = ["FINE", "analytic"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
+    Plotter.scatter_plot(xs = [theta, theta], ys = [fisher_np, fisher_tf], labels = ["FINE np", "FINE"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
+
+    # x, y = mod.evaluate_fisher_alternative(theta = [[4.0]])
+    # Plotter.scatter_plot(xs = [x], ys = [y], labels = [""], outfile = "testgradient.pdf")
+    
+    # sampledata = mod.evaluate_fisher_alternative(theta = [[4.0]])
+    # Plotter.histogram(sampledata, "testsampling.pdf")
     
 if __name__ == "__main__":
     parser = ArgumentParser(description = "launch training campaign")

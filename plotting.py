@@ -17,6 +17,12 @@ class Plotter:
         ax.legend()
         fig.savefig(outfile)
 
+    def histogram(xs, outfile):
+        fig = plt.figure(figsize = (6, 5))
+        ax = fig.add_subplot(111)
+        ax.hist(xs)
+        fig.savefig(outfile)
+        
     @staticmethod
     def heatmap(x, y, z, outfile, xlabel = "", ylabel = "", density = 1000):
         x, y, z = x.flatten(), y.flatten(), z.flatten()

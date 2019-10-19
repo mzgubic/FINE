@@ -67,6 +67,25 @@ class FlowModel:
             self.xk = cur_trafo.forward(self.xk) # propagate them to the next transformation in the flow
 
         return tf.add_n(self.fisher_densities) # add up all contributions to give the full Fisher information
+
+    def build_cdf_sampler(self, x, trafos):
+        # first, need to convert 'x' to correspond to samples taken from the actual p(x|theta)
+        # just apply the flow transformation to achieve that
+        x_transf = x
+        for cur_trafo in trafos:
+            x_transf = cur_trafo.forward(x_transf)
+
+        return x_transf
+    
+    def build_fisher_alternative(self, x, theta, trafos):
+        """
+        Compute the Fisher information instead using the alternative formulation, where the second
+        derivative gets replaced by the square of the first derivative. Expect this to be numerically more stable.
+        """
+        eps = 1e-6
+        
+        # just need to evaluate the derivative of logcdf at these locations and take the average
+        return tf.square(tf.gradients(self.logcdf, theta))
     
     def init(self):
         with self.graph.as_default():
@@ -94,6 +113,8 @@ class FlowModel:
 
             self.logcdf = self.build_logcdf(self.x_in, self.theta_in, trafos = self.trafos)
 
+            self.sampler = self.build_cdf_sampler(self.rnd_in, trafos = self.trafos)
+            
             # add the loss for the training of the conditional density estimator
             self.loss = -tf.math.reduce_sum(self.logcdf, axis = 0) # sum along the batch dimension
             
@@ -101,7 +122,8 @@ class FlowModel:
             self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001).minimize(self.loss)
 
             # add some more operations that compute the Fisher information
-            self.fisher = self.build_fisher(self.rnd_in, self.theta_in, self.trafos)
+            self.fisher = self.build_fisher_alternative(self.x_in, self.theta_in, self.trafos)
+            #self.fisher = self.build_fisher(self.rnd_in, self.theta_in, self.trafos)
             
     def evaluate(self, x, theta):
         """
@@ -111,6 +133,29 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
 
+    def evaluate_fisher_alternative_np(self, theta, num_samples = 10000):
+        rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
+        theta_prepared = np.full_like(rnd, theta)
+        
+        fisher = []
+        with self.graph.as_default():
+            rnd_transf = self.sess.run(self.sampler, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
+            for cur in rnd_transf:
+                cur_fisher = self.sess.run(self.fisher, feed_dict = {self.x_in: [cur], self.theta_in: theta})
+                fisher.append(cur_fisher)
+
+        return np.mean(fisher)
+    
+    def evaluate_fisher_alternative(self, theta, num_samples = 50000):
+        rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
+        theta_prepared = np.full_like(rnd, theta)
+
+        with self.graph.as_default():
+            rnd_transf = self.sess.run(self.sampler, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
+            fisher = self.sess.run(self.fisher, feed_dict = {self.x_in: rnd_transf, self.theta_in: theta_prepared})
+
+        return np.mean(fisher)
+    
     def evaluate_fisher(self, theta, num_samples = 1000):
         """
         Compute the Fisher information w.r.t. theta.
@@ -134,7 +179,7 @@ class FlowModel:
         print("dens = {}".format(dens))
         print("xk = {}".format(xk))
     
-    def fit(self, x, theta, number_steps = 10, burn_in_steps = 8000):
+    def fit(self, x, theta, number_steps = 10, burn_in_steps = 4000):
         loss_prev_avg = 1e6
         loss_cur_avg = 0.0
         cur_step = 0
