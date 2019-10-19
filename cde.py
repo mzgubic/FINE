@@ -4,7 +4,7 @@ import numpy as np
 
 from plotting import Plotter
 from flow_model import FlowModel
-from flows import RadialFlow, TombsFlow
+from flows import RadialFlow, LinearRadialFlow, TombsFlow
 
 def sample_CDE(theta):
     """
@@ -33,18 +33,22 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 100
+    nsamples = 500
     data, theta = generate_data(nsamples)
 
     # create a simple scatter plot to visualise this datset
-    Plotter.scatter_plot(x = theta, y = data, outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
+    Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 2, flow_model = TombsFlow)
+    mod = FlowModel(number_warps = 1, flow_model = RadialFlow)
     mod.build()
     mod.init()
-    mod.fit(x = data, theta = theta, number_steps = 5000)
 
+    # mod.evaluate_with_debug(x = data, theta = theta)
+    mod.fit(x = data, theta = theta, number_steps = 10000)
+    mod.evaluate_gradients_with_debug(x = data, theta = theta)
+    #mod.evaluate_with_debug(x = data, theta = theta)
+    
     # now evaluate the fitted density model and create a heatmap
     density = 10
     x_range = np.linspace(-4, 4, density)
@@ -63,15 +67,17 @@ def run():
     theta = np.expand_dims(np.linspace(2.0, 6.0, 100), axis = 1)
     x = np.zeros_like(theta)
     crosssection = mod.evaluate(x = x, theta = theta)
-    Plotter.scatter_plot(theta, crosssection, outfile = "x_0.pdf", xlabel = r'$\theta$', ylabel = '$p(x = 0|\theta)$')
+    Plotter.scatter_plot(xs = [theta], ys = [crosssection], labels = ['$p(x = 0|\theta)$'], outfile = "x_0.pdf", xlabel = r'$\theta$')
     
     # evaluate the Fisher information
-    theta = np.linspace(2.0, 6.0, 20)
+    theta = np.linspace(2.0, 6.0, 100)
     fisher = []
+    fisher_analytic = []
     for cur_theta in theta:
         fisher.append(mod.evaluate_fisher(theta = [[cur_theta]]))
+        fisher_analytic.append(2.0 / cur_theta**2)
 
-    Plotter.scatter_plot(theta, fisher, outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
+    Plotter.scatter_plot(xs = [theta, theta], ys = [fisher, fisher_analytic], labels = ["FINE", "analytic"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
     
 if __name__ == "__main__":
     parser = ArgumentParser(description = "launch training campaign")

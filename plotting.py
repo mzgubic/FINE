@@ -7,12 +7,14 @@ from matplotlib.mlab import griddata
 class Plotter:
 
     @staticmethod
-    def scatter_plot(x, y, outfile, xlabel = "", ylabel = ""):
+    def scatter_plot(xs, ys, labels, outfile, xlabel = "", ylabel = ""):
         fig = plt.figure(figsize = (6, 5))
         ax = fig.add_subplot(111)
-        ax.scatter(x, y, s = 1)
+        for x, y, label in zip(xs, ys, labels):
+            ax.scatter(x, y, s = 1, label = label)            
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
+        ax.legend()
         fig.savefig(outfile)
 
     @staticmethod

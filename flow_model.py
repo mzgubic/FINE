@@ -18,11 +18,11 @@ class FlowModel:
     def std_normal(self, x):
         return 1.0 / tf.sqrt(2 * m.pi) * tf.exp(-0.5 * tf.math.square(x))
 
-    def build_param_network(self, intensor, num_layers, num_units, num_params):
+    def build_param_network(self, intensor, num_units, num_params):
         with tf.variable_scope("flow_paramnet"):
             lay = intensor
 
-            for cur_lay in range(num_layers):
+            for cur_lay, num_units in enumerate(num_units):
                 lay = layers.relu(lay, num_units)
 
             outtensor = layers.linear(lay, num_params)
@@ -79,16 +79,18 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in, num_layers = 2, num_units = self.number_warps * 2, num_params = self.number_warps * 3)
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [self.number_warps, self.number_warps * 2, self.number_warps * 3, self.number_warps * 3, self.number_warps * 3], num_params = self.number_warps * 3)
             
             # initialise the flow transformations
             self.alphas = self.flow_params[:, :self.number_warps]
-            self.betas = self.flow_params[:, self.number_warps:]
+            self.betas = self.flow_params[:, self.number_warps:2*self.number_warps]
+            self.gammas = self.flow_params[:, 2*self.number_warps:3*self.number_warps]
             
             for cur in range(self.number_warps):
                 cur_alpha = tf.expand_dims(self.alphas[:,cur], axis = 1)
                 cur_beta = tf.expand_dims(self.betas[:,cur], axis = 1)
-                self.trafos.append(self.flow_model(alpha = cur_alpha, beta = cur_beta, name = "flow_trafo_{}".format(cur)))
+                cur_gamma = tf.expand_dims(self.gammas[:,cur], axis = 1)
+                self.trafos.append(self.flow_model(alpha = cur_alpha, beta = cur_beta, gamma = cur_gamma, name = "flow_trafo_{}".format(cur)))
 
             self.logcdf = self.build_logcdf(self.x_in, self.theta_in, trafos = self.trafos)
 
@@ -133,22 +135,54 @@ class FlowModel:
         print("xk = {}".format(xk))
     
     def fit(self, x, theta, number_steps = 10):
-        for cur_step in range(number_steps):
+        loss_prev = 1e6
+        cur_step = 0
+        #for cur_step in range(number_steps):
+        while True:
             with self.graph.as_default():
                 self.sess.run(self.fit_step, feed_dict = {self.x_in: x, self.theta_in: theta})
-                if cur_step % 100:
+                cur_step += 1
+                if cur_step % 1000:
                     loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
-                    print("loss = {}".format(loss))
-    
+                    print("step {}: -log L = {}".format(cur_step, loss))
+                    if loss < loss_prev:
+                        loss_prev = loss
+                    else:
+                        break
+
+    def evaluate_gradients_with_debug(self, x, theta):
+        with self.graph.as_default():
+            debug_grad_alpha = self.sess.run(tf.gradients(self.loss, [self.trafos[0].alpha]), feed_dict = {self.x_in: x, self.theta_in: theta})
+            debug_grad_beta = self.sess.run(tf.gradients(self.loss, [self.trafos[0].beta]), feed_dict = {self.x_in: x, self.theta_in: theta})
+            debug_grad_gamma = self.sess.run(tf.gradients(self.loss, [self.trafos[0].gamma]), feed_dict = {self.x_in: x, self.theta_in: theta})
+            print("grad_alpha = {}".format(debug_grad_alpha))
+            print("grad_beta = {}".format(debug_grad_beta))
+            print("grad_gamma = {}".format(debug_grad_gamma))
+                    
     def evaluate_with_debug(self, x, theta):
         with self.graph.as_default():
-            debug_flow_params = self.sess.run(self.flow_params, feed_dict = {self.x_in: x, self.theta_in: theta})
-            debug_alphas = self.sess.run(self.alphas[:,0], feed_dict = {self.x_in: x, self.theta_in: theta})
-            debug_betas = self.sess.run(self.betas[:,0], feed_dict = {self.x_in: x, self.theta_in: theta})
-            debug_x = self.sess.run(self.x_in, feed_dict = {self.x_in: x, self.theta_in: theta})
-        print("flow_params = {}".format(debug_flow_params))
-        print("alphas = {}".format(debug_alphas))
-        print("betas = {}".format(debug_betas))
-        print("x_int = {}".format(debug_x))
+
+            debug_alpha = self.sess.run(self.trafos[0].alpha, feed_dict = {self.x_in: x, self.theta_in: theta})
+            debug_beta = self.sess.run(self.trafos[0].beta, feed_dict = {self.x_in: x, self.theta_in: theta})
+            debug_gamma = self.sess.run(self.trafos[0].gamma, feed_dict = {self.x_in: x, self.theta_in: theta})
+
+            # debug_logcdf = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
+            # debug_loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
+            # debug_A1 = self.sess.run(self.trafos[0].selected_A1, feed_dict = {self.x_in: x, self.theta_in: theta})
+            # debug_A2 = self.sess.run(self.trafos[0].selected_A2, feed_dict = {self.x_in: x, self.theta_in: theta})
+            # debug_B1 = self.sess.run(self.trafos[0].selected_B1, feed_dict = {self.x_in: x, self.theta_in: theta})
+            # debug_B2 = self.sess.run(self.trafos[0].selected_B2, feed_dict = {self.x_in: x, self.theta_in: theta})
+            # debug_z_in = self.sess.run(self.trafos[0].z_in, feed_dict = {self.x_in: x, self.theta_in: theta})
+            
+        print("alpha = {}".format(debug_alpha))
+        print("beta = {}".format(debug_beta))
+        print("gamma = {}".format(debug_gamma))
+        # print("logcdf = {}".format(debug_logcdf))
+        # print("loss = {}".format(debug_loss))
+        # print("z_in = {}".format(debug_z_in))
+        # print("A1 = {}".format(debug_A1))
+        # print("A2 = {}".format(debug_A2))
+        # print("B1 = {}".format(debug_B1))
+        # print("B2 = {}".format(debug_B2))
         
 
