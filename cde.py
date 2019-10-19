@@ -45,7 +45,7 @@ def run():
     mod.build()
     mod.init()
 
-    mod.fit(x = data, theta = theta, number_steps = 10000)
+    mod.fit(x = data, theta = theta, number_steps = 4000)
     
     # now evaluate the fitted density model and create a heatmap
     density = 50
@@ -71,19 +71,16 @@ def run():
     
     # evaluate the Fisher information
     theta = np.linspace(theta_low, theta_high, 20)
-    fisher_np = []
     fisher_tf = []
     fisher_analytic = []
     for cur_theta in theta:
-        #fisher_np.append(mod.evaluate_fisher_alternative_np(theta = [[cur_theta]]))
-        fisher_tf.append(mod.evaluate_fisher_alternative(theta = [[cur_theta]]))
+        fisher_tf.append(mod.evaluate_fisher(theta = [[cur_theta]]))
         fisher_analytic.append(2.0 / cur_theta**2)
 
-    fisher_np = fisher_tf
     print(fisher_tf)
         
     #Plotter.scatter_plot(xs = [theta, theta], ys = [fisher, fisher_analytic], labels = ["FINE", "analytic"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
-    Plotter.scatter_plot(xs = [theta, theta], ys = [fisher_np, fisher_tf], labels = ["FINE np", "FINE"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
+    Plotter.scatter_plot(xs = [theta], ys = [fisher_tf], labels = ["FINE"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
 
     # x, y = mod.evaluate_fisher_alternative(theta = [[4.0]])
     # Plotter.scatter_plot(xs = [x], ys = [y], labels = [""], outfile = "testgradient.pdf")
