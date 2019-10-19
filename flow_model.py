@@ -79,7 +79,7 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [self.number_warps, self.number_warps * 2, self.number_warps * 3, self.number_warps * 3, self.number_warps * 3], num_params = self.number_warps * 3)
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [10, 30, 40, 20], num_params = self.number_warps * 3)
             
             # initialise the flow transformations
             self.alphas = self.flow_params[:, :self.number_warps]
@@ -134,21 +134,31 @@ class FlowModel:
         print("dens = {}".format(dens))
         print("xk = {}".format(xk))
     
-    def fit(self, x, theta, number_steps = 10):
-        loss_prev = 1e6
+    def fit(self, x, theta, number_steps = 10, burn_in_steps = 8000):
+        loss_prev_avg = 1e6
+        loss_cur_avg = 0.0
         cur_step = 0
-        #for cur_step in range(number_steps):
-        while True:
+        for cur_step in range(burn_in_steps):
             with self.graph.as_default():
                 self.sess.run(self.fit_step, feed_dict = {self.x_in: x, self.theta_in: theta})
+                loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
                 cur_step += 1
-                if cur_step % 1000:
-                    loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
+                if cur_step % 10000:
                     print("step {}: -log L = {}".format(cur_step, loss))
-                    if loss < loss_prev:
-                        loss_prev = loss
-                    else:
-                        break
+            
+        # while True:
+        #     with self.graph.as_default():
+        #         self.sess.run(self.fit_step, feed_dict = {self.x_in: x, self.theta_in: theta})
+        #         loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
+        #         loss_cur_avg += loss
+        #         cur_step += 1
+        #         if cur_step % 10000:
+        #             print("step {}: -log L = {}".format(cur_step, loss))
+        #             if loss_cur_avg < loss_prev_avg:
+        #                 loss_prev_avg = loss_cur_avg
+        #                 loss_cur_avg = 0
+        #             else:
+        #                 break
 
     def evaluate_gradients_with_debug(self, x, theta):
         with self.graph.as_default():

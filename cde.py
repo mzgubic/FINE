@@ -17,15 +17,14 @@ def evaluate_CDE(theta, x):
     """
     Evaluate the conditional density p(x|theta)
     """
-    theta *= 2
-    return np.log(1.0 / np.sqrt(2 * np.pi * np.square(theta)) * np.exp(-0.5 * np.square((x / theta))))
+    return np.log(1.0 / np.sqrt(2 * np.pi * np.square(theta * 2)) * np.exp(-0.5 * np.square((x / (theta * 2)))))
 
-def generate_data(nsamples):
+def generate_data(nsamples, theta_low, theta_high):
     """
     Generate pairs (x, theta), where theta is drawn from a uniform distribution and x comes
     from the original conditional model.
     """
-    theta = np.random.uniform(low = 2, high = 6, size = nsamples)
+    theta = np.random.uniform(low = theta_low, high = theta_high, size = nsamples)
     x = sample_CDE(theta = theta)
     return np.expand_dims(x, axis = 1), np.expand_dims(theta, axis = 1)
 
@@ -33,44 +32,50 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 500
-    data, theta = generate_data(nsamples)
+    nsamples = 1000
+    theta_low = 2
+    theta_high = 6
+    data, theta = generate_data(nsamples, theta_low, theta_high)
 
     # create a simple scatter plot to visualise this datset
     Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 1, flow_model = RadialFlow)
+    mod = FlowModel(number_warps = 3, flow_model = LinearRadialFlow)
     mod.build()
     mod.init()
 
     # mod.evaluate_with_debug(x = data, theta = theta)
-    mod.fit(x = data, theta = theta, number_steps = 10000)
-    mod.evaluate_gradients_with_debug(x = data, theta = theta)
+    
+    #mod.fit(x = data, theta = theta, number_steps = 10000)
+    
+    #mod.evaluate_gradients_with_debug(x = data, theta = theta)
     #mod.evaluate_with_debug(x = data, theta = theta)
     
     # now evaluate the fitted density model and create a heatmap
     density = 10
     x_range = np.linspace(-4, 4, density)
-    theta_range = np.linspace(2, 6, density)
+    theta_range = np.linspace(theta_low, theta_high, density)
     evalpts = np.array(np.meshgrid(x_range, theta_range)).T.reshape(-1, 2)
 
     eval_x = np.expand_dims(evalpts[:,0], axis = 1)
     eval_theta = np.expand_dims(evalpts[:,1], axis = 1)
-    
+
     vals = mod.evaluate(x = eval_x, theta = eval_theta)
     vals_truth = evaluate_CDE(x = eval_x, theta = eval_theta)
+    
     Plotter.heatmap(x = eval_theta, y = eval_x, z = vals, outfile = "model.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
     Plotter.heatmap(x = eval_theta, y = eval_x, z = vals_truth, outfile = "truth.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # make some cross sectional plots through the CDE landscape
-    theta = np.expand_dims(np.linspace(2.0, 6.0, 100), axis = 1)
+    theta = np.expand_dims(np.linspace(theta_low, theta_high, 100), axis = 1)
     x = np.zeros_like(theta)
     crosssection = mod.evaluate(x = x, theta = theta)
-    Plotter.scatter_plot(xs = [theta], ys = [crosssection], labels = ['$p(x = 0|\theta)$'], outfile = "x_0.pdf", xlabel = r'$\theta$')
+    crosssection_truth = evaluate_CDE(x = x, theta = theta)
+    Plotter.scatter_plot(xs = [theta, theta], ys = [crosssection, crosssection_truth], labels = [r'$p(x = 0|\theta)$', 'truth'], outfile = "x_0.pdf", xlabel = r'$\theta$')
     
     # evaluate the Fisher information
-    theta = np.linspace(2.0, 6.0, 100)
+    theta = np.linspace(theta_low, theta_high, 100)
     fisher = []
     fisher_analytic = []
     for cur_theta in theta:
