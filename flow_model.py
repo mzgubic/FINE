@@ -114,13 +114,12 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
     
-    def evaluate_fisher(self, theta, num_samples = 3):
+    def evaluate_fisher(self, theta, num_samples = 30000):
         rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
         theta_prepared = np.full_like(rnd, theta)
 
         with self.graph.as_default():
             fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
-            print(fisher)
             
         return np.mean(fisher)
         

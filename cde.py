@@ -41,11 +41,11 @@ def run():
     Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 5, flow_model = TombsFlow)
+    mod = FlowModel(number_warps = 1, flow_model = LinearRadialFlow)
     mod.build()
     mod.init()
 
-    mod.fit(x = data, theta = theta, number_steps = 4000)
+    #mod.fit(x = data, theta = theta, number_steps = 4000)
     
     # now evaluate the fitted density model and create a heatmap
     density = 50
