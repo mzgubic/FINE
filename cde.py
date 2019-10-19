@@ -45,7 +45,7 @@ def run():
     mod.build()
     mod.init()
 
-    #mod.fit(x = data, theta = theta, number_steps = 10000)
+    mod.fit(x = data, theta = theta, number_steps = 10000)
     
     # now evaluate the fitted density model and create a heatmap
     density = 50

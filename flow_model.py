@@ -77,15 +77,17 @@ class FlowModel:
 
         return x_transf
     
-    def build_fisher_alternative(self, x, theta, trafos):
+    def build_fisher_alternative(self, rnd_transformed, theta, trafos):
         """
         Compute the Fisher information instead using the alternative formulation, where the second
         derivative gets replaced by the square of the first derivative. Expect this to be numerically more stable.
         """
         eps = 1e-6
+
+        self.logcdf_fisher = self.build_logcdf(rnd_transformed, self.theta_in, trafos = self.trafos)
         
         # just need to evaluate the derivative of logcdf at these locations and take the average
-        return tf.square(tf.gradients(self.logcdf, theta))
+        return tf.square(tf.gradients(self.logcdf_fisher, theta))
     
     def init(self):
         with self.graph.as_default():
@@ -122,7 +124,7 @@ class FlowModel:
             self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001).minimize(self.loss)
 
             # add some more operations that compute the Fisher information
-            self.fisher = self.build_fisher_alternative(self.x_in, self.theta_in, self.trafos)
+            self.fisher = self.build_fisher_alternative(self.sampler, self.theta_in, self.trafos)
             #self.fisher = self.build_fisher(self.rnd_in, self.theta_in, self.trafos)
             
     def evaluate(self, x, theta):
@@ -151,8 +153,8 @@ class FlowModel:
         theta_prepared = np.full_like(rnd, theta)
 
         with self.graph.as_default():
-            rnd_transf = self.sess.run(self.sampler, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
-            fisher = self.sess.run(self.fisher, feed_dict = {self.x_in: rnd_transf, self.theta_in: theta_prepared})
+            #rnd_transf = self.sess.run(self.sampler, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
+            fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
 
         return np.mean(fisher)
     
