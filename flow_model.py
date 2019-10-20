@@ -41,11 +41,9 @@ class FlowModel:
         # Jacobian terms on the way
         x0 = x
         jacs = []
-        #self.testhooks = []
         for cur_trafo in reversed(trafos):
             x0 = cur_trafo.backward(x0)
             jacs.append(tf.log(cur_trafo.forward_derivative(x0) + eps))
-            #self.testhooks.append(x0)
                 
         logcdf = tf.math.log(self.std_normal(x0) + eps) - tf.add_n(jacs)
             
@@ -70,7 +68,7 @@ class FlowModel:
         self.logcdf_fisher = self.build_logcdf(rnd_transformed, self.theta_in, trafos = self.trafos)
         
         # just need to evaluate the derivative of logcdf at these locations and take the average
-        return tf.square(tf.gradients(self.logcdf_fisher, theta))
+        return tf.reduce_mean(tf.square(tf.gradients(self.logcdf_fisher, theta)))
     
     def init(self):
         with self.graph.as_default():
@@ -123,7 +121,7 @@ class FlowModel:
         with self.graph.as_default():
             fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
             
-        return np.mean(fisher)
+        return fisher
 
     def fit(self, x, theta, number_steps = 4000):
         for cur_step in range(number_steps):
