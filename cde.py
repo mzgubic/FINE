@@ -41,11 +41,11 @@ def run():
     Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 1, flow_model = LinearRadialFlow)
+    mod = FlowModel(number_warps = 1, flow_model = RadialFlow)
     mod.build()
     mod.init()
 
-    #mod.fit(x = data, theta = theta, number_steps = 4000)
+    mod.fit(x = data, theta = theta, number_steps = 4000)
     
     # now evaluate the fitted density model and create a heatmap
     density = 50
@@ -75,18 +75,12 @@ def run():
     fisher_analytic = []
     for cur_theta in theta:
         fisher_tf.append(mod.evaluate_fisher(theta = [[cur_theta]]))
+        #fisher_tf.append(mod.evaluate_fisher(theta = [[4.0]]))
         fisher_analytic.append(2.0 / cur_theta**2)
 
     print(fisher_tf)
         
-    #Plotter.scatter_plot(xs = [theta, theta], ys = [fisher, fisher_analytic], labels = ["FINE", "analytic"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
     Plotter.scatter_plot(xs = [theta], ys = [fisher_tf], labels = ["FINE"], outfile = "fisher.pdf", xlabel = r'$\theta$', ylabel = "Fisher information")
-
-    # x, y = mod.evaluate_fisher_alternative(theta = [[4.0]])
-    # Plotter.scatter_plot(xs = [x], ys = [y], labels = [""], outfile = "testgradient.pdf")
-    
-    # sampledata = mod.evaluate_fisher_alternative(theta = [[4.0]])
-    # Plotter.histogram(sampledata, "testsampling.pdf")
     
 if __name__ == "__main__":
     parser = ArgumentParser(description = "launch training campaign")

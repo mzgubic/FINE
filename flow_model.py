@@ -41,9 +41,11 @@ class FlowModel:
         # Jacobian terms on the way
         x0 = x
         jacs = []
+        #self.testhooks = []
         for cur_trafo in reversed(trafos):
             x0 = cur_trafo.backward(x0)
             jacs.append(tf.log(cur_trafo.forward_derivative(x0) + eps))
+            #self.testhooks.append(x0)
                 
         logcdf = tf.math.log(self.std_normal(x0) + eps) - tf.add_n(jacs)
             
@@ -114,15 +116,15 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
     
-    def evaluate_fisher(self, theta, num_samples = 30000):
+    def evaluate_fisher(self, theta, num_samples = 1000):
         rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
         theta_prepared = np.full_like(rnd, theta)
-
+        
         with self.graph.as_default():
             fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
             
         return np.mean(fisher)
-        
+
     def fit(self, x, theta, number_steps = 4000):
         for cur_step in range(number_steps):
             with self.graph.as_default():
@@ -130,7 +132,7 @@ class FlowModel:
                 if cur_step % 10000:
                     loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
                     print("step {}: -log L = {}".format(cur_step, loss))
-            
+                    
     def evaluate_gradients_with_debug(self, x, theta):
         with self.graph.as_default():
             debug_grad_alpha = self.sess.run(tf.gradients(self.loss, [self.trafos[0].alpha]), feed_dict = {self.x_in: x, self.theta_in: theta})
