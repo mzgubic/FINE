@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorflow.contrib.layers as layers
+import tensorflow.layers as layers
 import math as m
 import numpy as np
 
@@ -23,9 +23,9 @@ class FlowModel:
             lay = intensor
 
             for cur_lay, num_units in enumerate(num_units):
-                lay = layers.relu(lay, num_units)
+                lay = layers.dense(lay, num_units, activation = tf.math.tanh)
 
-            outtensor = layers.linear(lay, num_params)
+            outtensor = layers.dense(lay, num_params, activation = None) # a linear layer at the end
 
         return outtensor
     
@@ -81,7 +81,7 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [10, 30, 40, 20], num_params = self.number_warps * 3)
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30], num_params = self.number_warps * 3)
             
             # initialise the flow transformations
             self.alphas = self.flow_params[:, :self.number_warps]
@@ -95,12 +95,18 @@ class FlowModel:
                 self.trafos.append(self.flow_model(alpha = cur_alpha, beta = cur_beta, gamma = cur_gamma, name = "flow_trafo_{}".format(cur)))
 
             self.logcdf = self.build_logcdf(self.x_in, self.theta_in, trafos = self.trafos)
+
+            self.shannon_reg = -tf.math.reduce_sum(tf.math.exp(self.logcdf) * self.logcdf)
             
             # add the loss for the training of the conditional density estimator
-            self.loss = -tf.math.reduce_sum(self.logcdf, axis = 0) # sum along the batch dimension
+            self.nll = -tf.math.reduce_sum(self.logcdf, axis = 0)
+            self.loss = self.nll - 20 * self.shannon_reg
             
             # add optimiser
-            self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001).minimize(self.loss)
+            self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001,
+                                                   beta1 = 0.9,
+                                                   beta2 = 0.999,
+                                                   epsilon = 1e-08).minimize(self.loss)
 
             # add some more operations that compute the Fisher information
             self.sampler = self.build_cdf_sampler(self.rnd_in, trafos = self.trafos)
@@ -128,8 +134,9 @@ class FlowModel:
             with self.graph.as_default():
                 self.sess.run(self.fit_step, feed_dict = {self.x_in: x, self.theta_in: theta})
                 if cur_step % 10000:
-                    loss = self.sess.run(self.loss, feed_dict = {self.x_in: x, self.theta_in: theta})
-                    print("step {}: -log L = {}".format(cur_step, loss))
+                    nll = self.sess.run(self.nll, feed_dict = {self.x_in: x, self.theta_in: theta})
+                    reg = self.sess.run(self.shannon_reg, feed_dict = {self.x_in: x, self.theta_in: theta})
+                    print("step {}: -log L = {:.2f} (reg = {:.2f})".format(cur_step, nll, reg))
                     
     def evaluate_gradients_with_debug(self, x, theta):
         with self.graph.as_default():

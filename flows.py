@@ -110,14 +110,14 @@ class TombsFlow:
 
     def forward(self, z):
         with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
-            return self.alpha * tf.math.sinh(z * self.beta)
+            return self.alpha * tf.math.sinh(z * self.beta + self.gamma)
 
     def backward(self, z):
         with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
-            return tf.math.asinh(z / self.alpha) / self.beta
+            return (tf.math.asinh(z / self.alpha) - self.gamma) / self.beta
 
     def forward_derivative(self, z):
         with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
-            return self.alpha * self.beta * tf.math.cosh(z * self.beta)
+            return self.alpha * self.beta * tf.math.cosh(z * self.beta + self.gamma)
 
         
