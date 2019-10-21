@@ -81,7 +81,7 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30], num_params = self.number_warps * 3)
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30], num_params = self.number_warps * 3)
             
             # initialise the flow transformations
             self.alphas = self.flow_params[:, :self.number_warps]
@@ -100,13 +100,13 @@ class FlowModel:
             
             # add the loss for the training of the conditional density estimator
             self.nll = -tf.math.reduce_sum(self.logcdf, axis = 0)
-            self.loss = self.nll - 20 * self.shannon_reg
+            self.loss = self.nll - 0 * self.shannon_reg
             
             # add optimiser
             self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001,
                                                    beta1 = 0.9,
                                                    beta2 = 0.999,
-                                                   epsilon = 1e-08).minimize(self.loss)
+                                                   epsilon = 1e-06).minimize(self.loss)
 
             # add some more operations that compute the Fisher information
             self.sampler = self.build_cdf_sampler(self.rnd_in, trafos = self.trafos)

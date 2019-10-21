@@ -4,7 +4,7 @@ import numpy as np
 
 from plotting import Plotter
 from flow_model import FlowModel
-from flows import RadialFlow, LinearRadialFlow, TombsFlow
+from flows import RadialFlow, LinearRadialFlow, HomogeneousLinearRadialFlow, TombsFlow
 
 def sample_CDE(theta):
     """
@@ -40,20 +40,20 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 50000
-    theta_low = 6
-    theta_high = 7
+    nsamples = 10000
+    theta_low = 2
+    theta_high = 6
     data, theta = generate_data(nsamples, theta_low, theta_high)
 
     # create a simple scatter plot to visualise this datset
     Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 2, flow_model = RadialFlow)
+    mod = FlowModel(number_warps = 1, flow_model = HomogeneousLinearRadialFlow)
     mod.build()
     mod.init()
 
-    mod.fit(x = data, theta = theta, number_steps = 2000)
+    mod.fit(x = data, theta = theta, number_steps = 3000)
     
     # now evaluate the fitted density model and create a heatmap
     density = 50

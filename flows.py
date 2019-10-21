@@ -23,6 +23,27 @@ class LinearRadialFlow:
         with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
             return tf.ones_like(z) * (1.0 + self.alpha)
 
+class HomogeneousLinearRadialFlow:
+
+    def __init__(self, alpha, beta, gamma, name = "flow_trafo"):
+        with tf.variable_scope(name, reuse = tf.AUTO_REUSE):
+            self.name = name
+            self.alpha = tf.math.exp(alpha)
+            self.beta = beta
+            self.gamma = gamma
+
+    def forward(self, z):
+        with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
+            return self.alpha * z
+
+    def backward(self, z):
+        with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
+            return z / self.alpha
+
+    def forward_derivative(self, z):
+        with tf.variable_scope(self.name, reuse = tf.AUTO_REUSE):
+            return tf.ones_like(z) * self.alpha
+        
 class RadialFlow:
 
     def __init__(self, alpha, beta, gamma, name = "flow_trafo"):
