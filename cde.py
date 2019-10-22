@@ -40,20 +40,29 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 10000
+    nsamples = 20000
     theta_low = 2
-    theta_high = 6
+    theta_high = 4
     data, theta = generate_data(nsamples, theta_low, theta_high)
 
     # create a simple scatter plot to visualise this datset
     Plotter.scatter_plot(xs = [theta], ys = [data], labels = ["data"], outfile = "data.pdf", xlabel = r'$\theta$', ylabel = r'$x$')
 
     # now build a model to implement the conditional density
-    mod = FlowModel(number_warps = 1, flow_model = HomogeneousLinearRadialFlow)
+    mod = FlowModel(number_warps = 3, flow_model = LinearRadialFlow)
     mod.build()
     mod.init()
 
     mod.fit(x = data, theta = theta, number_steps = 3000)
+
+    # make some more debug plots
+    debug_x = np.linspace(-4, 4, 50)
+    grads = []
+    for cur_x in debug_x:
+        cur_grad = mod.evaluate_gradient_debug(theta = 4.0, x = cur_x)
+        grads.append(cur_grad)
+
+    Plotter.scatter_plot(xs = [debug_x], ys = [grads], labels = ["grad"], outfile = "grads_debug.pdf")
     
     # now evaluate the fitted density model and create a heatmap
     density = 50

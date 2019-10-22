@@ -81,7 +81,7 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30], num_params = self.number_warps * 3)
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30], num_params = self.number_warps * 3)
             
             # initialise the flow transformations
             self.alphas = self.flow_params[:, :self.number_warps]
@@ -106,11 +106,12 @@ class FlowModel:
             self.fit_step = tf.train.AdamOptimizer(learning_rate = 0.001,
                                                    beta1 = 0.9,
                                                    beta2 = 0.999,
-                                                   epsilon = 1e-06).minimize(self.loss)
+                                                   epsilon = 1e-08).minimize(self.loss)
 
             # add some more operations that compute the Fisher information
             self.sampler = self.build_cdf_sampler(self.rnd_in, trafos = self.trafos)
-            self.fisher = self.build_fisher(self.sampler, self.theta_in, self.trafos)
+            #self.fisher = self.build_fisher(self.sampler, self.theta_in, self.trafos)
+            self.fisher = self.build_fisher(self.rnd_in, self.theta_in, self.trafos)
             
     def evaluate(self, x, theta):
         """
@@ -120,15 +121,16 @@ class FlowModel:
             val = self.sess.run(self.logcdf, feed_dict = {self.x_in: x, self.theta_in: theta})
         return val
     
-    def evaluate_fisher(self, theta, num_samples = 1000):
+    def evaluate_fisher(self, theta, num_samples = 500000):
         rnd = np.expand_dims(np.random.normal(loc = 0.0, scale = 1.0, size = num_samples), axis = 1)
         theta_prepared = np.full_like(rnd, theta)
         
         with self.graph.as_default():
-            fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
-            
-        return fisher
+            rnd_transformed = self.sess.run(self.sampler, feed_dict = {self.rnd_in: rnd, self.theta_in: theta_prepared})
+            fisher = self.sess.run(self.fisher, feed_dict = {self.rnd_in: rnd_transformed, self.theta_in: theta_prepared})
 
+        return fisher
+        
     def fit(self, x, theta, number_steps = 4000):
         for cur_step in range(number_steps):
             with self.graph.as_default():
