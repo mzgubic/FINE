@@ -40,7 +40,7 @@ def run():
     print("running with tensorflow version {}".format(tf.__version__))
 
     # prepare samples from the original conditional distribution that is to be estimated
-    nsamples = 20000
+    nsamples = 200000
     theta_low = 2
     theta_high = 4
     data, theta = generate_data(nsamples, theta_low, theta_high)
@@ -53,17 +53,8 @@ def run():
     mod.build()
     mod.init()
 
-    mod.fit(x = data, theta = theta, number_steps = 3000)
+    mod.fit(x = data, theta = theta, number_steps = 500)
 
-    # make some more debug plots
-    debug_x = np.linspace(-4, 4, 50)
-    grads = []
-    for cur_x in debug_x:
-        cur_grad = mod.evaluate_gradient_debug(theta = 4.0, x = cur_x)
-        grads.append(cur_grad)
-
-    Plotter.scatter_plot(xs = [debug_x], ys = [grads], labels = ["grad"], outfile = "grads_debug.pdf")
-    
     # now evaluate the fitted density model and create a heatmap
     density = 50
     x_range = np.linspace(-4, 4, density)
