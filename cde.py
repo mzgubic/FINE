@@ -41,8 +41,8 @@ def run():
 
     # prepare samples from the original conditional distribution that is to be estimated
     nsamples = 200000
-    theta_low = 2
-    theta_high = 4
+    theta_low = 4
+    theta_high = 8
     data, theta = generate_data(nsamples, theta_low, theta_high)
 
     # create a simple scatter plot to visualise this datset
@@ -53,7 +53,7 @@ def run():
     mod.build()
     mod.init()
 
-    mod.fit(x = data, theta = theta, number_steps = 500)
+    mod.fit(x = data, theta = theta, number_steps = 2000, batch_size = 5000)
 
     # now evaluate the fitted density model and create a heatmap
     density = 50

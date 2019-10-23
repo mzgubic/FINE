@@ -18,12 +18,13 @@ class FlowModel:
     def std_normal(self, x):
         return 1.0 / tf.sqrt(2 * m.pi) * tf.exp(-0.5 * tf.math.square(x))
 
-    def build_param_network(self, intensor, num_units, num_params):
+    def build_param_network(self, intensor, num_units, activations, num_params):
         with tf.variable_scope("flow_paramnet"):
+            #intensor = tf.tile(intensor, [1, 10])
             lay = intensor
 
-            for cur_lay, num_units in enumerate(num_units):
-                lay = layers.dense(lay, num_units, activation = tf.math.tanh)
+            for cur_lay, (num_units, activation) in enumerate(zip(num_units, activations)):
+                lay = layers.dense(lay, num_units, activation = activation)
 
             outtensor = layers.dense(lay, num_params, activation = None) # a linear layer at the end
 
@@ -81,7 +82,8 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30, 30], num_params = self.number_warps * 3)
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30, 30], activations = [tf.nn.relu, tf.nn.relu, tf.math.tanh, tf.math.tanh],
+                                                        num_params = self.number_warps * 3)
             
             # initialise the flow transformations
             self.alphas = self.flow_params[:, :self.number_warps]
@@ -99,7 +101,7 @@ class FlowModel:
             self.shannon_reg = -tf.math.reduce_sum(tf.math.exp(self.logcdf) * self.logcdf)
             
             # add the loss for the training of the conditional density estimator
-            self.nll = -tf.math.reduce_sum(self.logcdf, axis = 0)
+            self.nll = -tf.reduce_mean(self.logcdf, axis = 0)
             self.loss = self.nll - 0 * self.shannon_reg
             
             # add optimiser
@@ -131,13 +133,18 @@ class FlowModel:
 
         return fisher
         
-    def fit(self, x, theta, number_steps = 4000):
+    def fit(self, x, theta, number_steps = 4000, batch_size = 1000):
         for cur_step in range(number_steps):
+
+            inds = np.random.choice(len(x), batch_size)
+            x_batch = x[inds]
+            theta_batch = theta[inds]
+            
             with self.graph.as_default():
-                self.sess.run(self.fit_step, feed_dict = {self.x_in: x, self.theta_in: theta})
+                self.sess.run(self.fit_step, feed_dict = {self.x_in: x_batch, self.theta_in: theta_batch})
                 if cur_step % 10000:
-                    nll = self.sess.run(self.nll, feed_dict = {self.x_in: x, self.theta_in: theta})
-                    reg = self.sess.run(self.shannon_reg, feed_dict = {self.x_in: x, self.theta_in: theta})
+                    nll = self.sess.run(self.nll, feed_dict = {self.x_in: x_batch, self.theta_in: theta_batch})
+                    reg = self.sess.run(self.shannon_reg, feed_dict = {self.x_in: x_batch, self.theta_in: theta_batch})
                     print("step {}: -log L = {:.2f} (reg = {:.2f})".format(cur_step, nll, reg))
                     
     def evaluate_gradients_with_debug(self, x, theta):
