@@ -53,7 +53,7 @@ def run():
     mod.build()
     mod.init()
 
-    mod.fit(x = data, theta = theta, number_steps = 2000, batch_size = 5000)
+    mod.fit(x = data, theta = theta, number_steps = 1500, batch_size = 8000)
 
     # now evaluate the fitted density model and create a heatmap
     density = 50
@@ -79,7 +79,7 @@ def run():
     make_cross_section_plot(mod, theta_low, theta_high, x = 6.0, outfile = "x_6.pdf")
     
     # evaluate the Fisher information
-    theta = np.linspace(theta_low, theta_high, 20)
+    theta = np.linspace(theta_low, theta_high, 50)
     fisher_tf = []
     fisher_analytic = []
     for cur_theta in theta:

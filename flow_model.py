@@ -82,7 +82,7 @@ class FlowModel:
             self.rnd_in = tf.placeholder(tf.float32, [None, 1], name = 'rnd_in')
 
             # construct the network computing the parameters of the flow transformations
-            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30, 30], activations = [tf.nn.relu, tf.nn.relu, tf.math.tanh, tf.math.tanh],
+            self.flow_params = self.build_param_network(intensor = self.theta_in,  num_units = [30, 30, 30, 30, 30], activations = [tf.math.tanh, tf.math.tanh, tf.nn.relu, tf.nn.relu, tf.nn.relu],
                                                         num_params = self.number_warps * 3)
             
             # initialise the flow transformations
